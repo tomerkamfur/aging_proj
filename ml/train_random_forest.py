@@ -38,6 +38,11 @@ def parse_args():
     parser.add_argument("--max-depth", type=int, default=None, help="Max tree depth.")
     parser.add_argument("--k-folds", type=int, default=5, help="K-folds for validation.")
     parser.add_argument(
+        "--importance-out",
+        default="ml/models/rf_death_day_feature_importance.csv",
+        help="Output CSV for feature importances.",
+    )
+    parser.add_argument(
         "--drop-prefix",
         action="append",
         default=[],
@@ -139,6 +144,14 @@ def main():
         },
         out_path,
     )
+
+    importances = pd.DataFrame(
+        {
+            "feature": feature_cols,
+            "importance": final_model.feature_importances_,
+        }
+    ).sort_values("importance", ascending=False)
+    importances.to_csv(args.importance_out, index=False)
 
 
 if __name__ == "__main__":

@@ -23,6 +23,13 @@ Baseline results (SI206, early-only features)
 - Validation (CV mean ± std): MAE 0.2433 ± 0.0971, RMSE 0.3379 ± 0.1503, R2 0.8553 ± 0.0193
 - Test (holdout): MAE 0.2610, RMSE 0.4441, R2 0.8276
 
+Baseline results (stage 1-3 proportions removed)
+- Dataset: data_normalized\\SI206_2025-05-08\\features_stage1_3_early_behavior_death_day.csv
+- Target: death_day
+- Split: 80% train / 20% test, 5-fold CV on train split
+- Validation (CV mean ± std): MAE 0.2426 ± 0.0879, RMSE 0.3396 ± 0.1393, R2 0.8505 ± 0.0206
+- Test (holdout): MAE 0.2808, RMSE 0.4553, R2 0.8188
+
 Notes
 - `total_frames` is derived from stage boundaries and can serve as a proxy
   target if no explicit lifespan label exists.

@@ -97,6 +97,9 @@ def main():
         out_row["stage_1_2_frames"] = (
             int(float(row["stage_1_frames"])) + int(float(row["stage_2_frames"]))
         )
+        out_row["stage_2_3_frames"] = (
+            int(float(row["stage_2_frames"])) + int(float(row["stage_3_frames"]))
+        )
 
         roaming_path = BASE_DIR / "time_roaming.csv"
         # Load roaming per worm on demand to keep memory small.

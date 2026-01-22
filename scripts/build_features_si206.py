@@ -103,13 +103,15 @@ def stage_features(stage_info, worm_id):
     durations = stage_info.get(worm_id, {})
     total_frames = sum(durations.values())
     for idx in range(1, 7):
+        if idx in {1, 5}:
+            continue
         duration = int(durations.get(idx, 0))
         feats[f"stage_{idx}_frames"] = duration
-    for idx in range(1, 7):
-        duration = int(durations.get(idx, 0))
-        feats[f"stage_{idx}_prop"] = float(duration / total_frames) if total_frames else 0.0
     feats["total_frames"] = int(total_frames)
     return feats
+
+
+
 
 
 def speed_features(worm_id, speed_dir: Path, column_count: int, prefix: str):

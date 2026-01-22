@@ -37,6 +37,7 @@ def parse_args():
     parser.add_argument("--n-estimators", type=int, default=300, help="Trees in forest.")
     parser.add_argument("--max-depth", type=int, default=None, help="Max tree depth.")
     parser.add_argument("--k-folds", type=int, default=5, help="K-folds for validation.")
+    parser.add_argument("--n-jobs", type=int, default=1, help="Parallel jobs for training.")
     parser.add_argument(
         "--importance-out",
         default="ml/models/rf_death_day_feature_importance.csv",
@@ -93,7 +94,7 @@ def main():
             n_estimators=args.n_estimators,
             max_depth=args.max_depth,
             random_state=args.random_state,
-            n_jobs=-1,
+            n_jobs=args.n_jobs,
         )
         model.fit(X_tr, y_tr)
         preds = model.predict(X_val)
@@ -110,7 +111,7 @@ def main():
         n_estimators=args.n_estimators,
         max_depth=args.max_depth,
         random_state=args.random_state,
-        n_jobs=-1,
+        n_jobs=args.n_jobs,
     )
     final_model.fit(X_train, y_train)
     test_preds = final_model.predict(X_test)

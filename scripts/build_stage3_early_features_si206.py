@@ -91,6 +91,7 @@ def main():
         ratio = (end_3 / end_6) if end_6 else 0.0
 
         out_row = dict(row)
+        out_row.pop("stage_1_frames", None)
         out_row.pop("stage_1_prop", None)
         out_row.pop("stage_2_prop", None)
         out_row.pop("stage_3_prop", None)

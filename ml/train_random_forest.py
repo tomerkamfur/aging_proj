@@ -27,6 +27,16 @@ def parse_args():
         help="Path to features CSV.",
     )
     parser.add_argument(
+        "--train-data",
+        default="",
+        help="Optional training features CSV (overrides --data for training).",
+    )
+    parser.add_argument(
+        "--test-data",
+        default="",
+        help="Optional test features CSV (overrides --data for testing).",
+    )
+    parser.add_argument(
         "--target",
         default="death_day",
         help="Target column name.",
@@ -54,11 +64,13 @@ def parse_args():
 
 def main():
     args = parse_args()
-    data_path = Path(args.data)
-    if not data_path.exists():
-        raise FileNotFoundError(f"Missing data file: {data_path}")
+    train_path = Path(args.train_data) if args.train_data else Path(args.data)
+    test_path = Path(args.test_data) if args.test_data else None
 
-    df = pd.read_csv(data_path)
+    if not train_path.exists():
+        raise FileNotFoundError(f"Missing data file: {train_path}")
+
+    df = pd.read_csv(train_path)
     if args.target not in df.columns:
         raise ValueError(f"Target column not found: {args.target}")
 
@@ -76,36 +88,56 @@ def main():
     X = df[feature_cols].astype(float)
     y = df[args.target].astype(float)
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=args.test_size,
-        random_state=args.random_state,
-    )
+    if test_path:
+        if not test_path.exists():
+            raise FileNotFoundError(f"Missing test data file: {test_path}")
+        df_test = pd.read_csv(test_path)
+        if args.target not in df_test.columns:
+            raise ValueError(f"Target column not found in test file: {args.target}")
+        X_train, y_train = X, y
+        drop_cols_test = set(ID_COLUMNS)
+        drop_cols_test.add(args.target)
+        for prefix in args.drop_prefix:
+            for col in df_test.columns:
+                if col.startswith(prefix):
+                    drop_cols_test.add(col)
+        feature_cols_test = [c for c in df_test.columns if c not in drop_cols_test]
+        if feature_cols_test != feature_cols:
+            raise ValueError("Train/test feature columns do not match.")
+        X_test = df_test[feature_cols].astype(float)
+        y_test = df_test[args.target].astype(float)
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=args.test_size,
+            random_state=args.random_state,
+        )
 
-    kfold = KFold(n_splits=args.k_folds, shuffle=True, random_state=args.random_state)
     cv_mae = []
     cv_rmse = []
     cv_r2 = []
-    for train_idx, val_idx in kfold.split(X_train):
-        X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
-        y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
-        model = RandomForestRegressor(
-            n_estimators=args.n_estimators,
-            max_depth=args.max_depth,
-            random_state=args.random_state,
-            n_jobs=args.n_jobs,
-        )
-        model.fit(X_tr, y_tr)
-        preds = model.predict(X_val)
-        cv_mae.append(mean_absolute_error(y_val, preds))
-        cv_rmse.append(np.sqrt(mean_squared_error(y_val, preds)))
-        cv_r2.append(r2_score(y_val, preds))
+    if args.k_folds > 1:
+        kfold = KFold(n_splits=args.k_folds, shuffle=True, random_state=args.random_state)
+        for train_idx, val_idx in kfold.split(X_train):
+            X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
+            y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
+            model = RandomForestRegressor(
+                n_estimators=args.n_estimators,
+                max_depth=args.max_depth,
+                random_state=args.random_state,
+                n_jobs=args.n_jobs,
+            )
+            model.fit(X_tr, y_tr)
+            preds = model.predict(X_val)
+            cv_mae.append(mean_absolute_error(y_val, preds))
+            cv_rmse.append(np.sqrt(mean_squared_error(y_val, preds)))
+            cv_r2.append(r2_score(y_val, preds))
 
-    print("Validation (CV on train split)")
-    print(f"MAE: {np.mean(cv_mae):.4f} ± {np.std(cv_mae):.4f}")
-    print(f"RMSE: {np.mean(cv_rmse):.4f} ± {np.std(cv_rmse):.4f}")
-    print(f"R2: {np.mean(cv_r2):.4f} ± {np.std(cv_r2):.4f}")
+        print("Validation (CV on train split)")
+        print(f"MAE: {np.mean(cv_mae):.4f} ± {np.std(cv_mae):.4f}")
+        print(f"RMSE: {np.mean(cv_rmse):.4f} ± {np.std(cv_rmse):.4f}")
+        print(f"R2: {np.mean(cv_r2):.4f} ± {np.std(cv_r2):.4f}")
 
     final_model = RandomForestRegressor(
         n_estimators=args.n_estimators,
@@ -126,22 +158,29 @@ def main():
 
     out_path = Path(args.model_out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(
-        {
-            "model": final_model,
-            "feature_cols": feature_cols,
-            "target": args.target,
-            "metrics": {
+    metrics = {
+        "test_mae": float(test_mae),
+        "test_rmse": float(test_rmse),
+        "test_r2": float(test_r2),
+    }
+    if cv_mae:
+        metrics.update(
+            {
                 "cv_mae_mean": float(np.mean(cv_mae)),
                 "cv_mae_std": float(np.std(cv_mae)),
                 "cv_rmse_mean": float(np.mean(cv_rmse)),
                 "cv_rmse_std": float(np.std(cv_rmse)),
                 "cv_r2_mean": float(np.mean(cv_r2)),
                 "cv_r2_std": float(np.std(cv_r2)),
-                "test_mae": float(test_mae),
-                "test_rmse": float(test_rmse),
-                "test_r2": float(test_r2),
-            },
+            }
+        )
+
+    joblib.dump(
+        {
+            "model": final_model,
+            "feature_cols": feature_cols,
+            "target": args.target,
+            "metrics": metrics,
         },
         out_path,
     )

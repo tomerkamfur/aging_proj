@@ -63,9 +63,9 @@ Notes:
 - `experiment_id`: experiment label (e.g., SI206_2025-05-08).
 
 **Stage duration features**
-- `stage_2_frames`, `stage_3_frames`, `stage_4_frames`, `stage_6_frames`: frame counts per stage.
+- `stage_2_frames`, `stage_3_frames`, `stage_4_frames`, `stage_5_frames`: frame counts per stage.
 - `total_frames`: sum of frame counts across stages.
-- (Legacy) `stage_1_frames`, `stage_5_frames`: excluded from current modeling.
+- (Legacy) `stage_1_frames`, `stage_6_frames`: excluded from current modeling.
 - (Legacy) `stage_{i}_prop`: stage proportion = stage_i_frames / total_frames.
 
 **Roaming features (time_roaming)**

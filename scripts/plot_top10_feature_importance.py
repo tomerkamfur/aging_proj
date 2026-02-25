@@ -9,6 +9,9 @@ DATASETS = [
     ("SI206", "multirun_results/SI206_metrics.csv", "multirun_results/SI206_feature_importance.csv"),
     ("SI216", "multirun_results/SI216_metrics.csv", "multirun_results/SI216_feature_importance.csv"),
     ("Combined", "multirun_results/Combined_metrics.csv", "multirun_results/Combined_feature_importance.csv"),
+    ("SI206_shuffled", "multirun_results/SI206_shuffled_metrics.csv", "multirun_results/SI206_shuffled_feature_importance.csv"),
+    ("SI216_shuffled", "multirun_results/SI216_shuffled_metrics.csv", "multirun_results/SI216_shuffled_feature_importance.csv"),
+    ("Combined_shuffled", "multirun_results/Combined_shuffled_metrics.csv", "multirun_results/Combined_shuffled_feature_importance.csv"),
 ]
 
 

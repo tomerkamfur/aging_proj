@@ -10,16 +10,20 @@ BASE_DIR = Path("data_normalized") / EXPERIMENT_ID
 SPEED_SETS = [
     ("speed_1s", 3),
     ("speed_10s_avg", 3),
-    ("speed_av2", 6),
+    # ("speed_av2", 6),
 ]
 
 STATS = [
     ("mean", np.mean),
-    ("std", np.std),
-    ("median", np.median),
-    ("p10", lambda x: np.percentile(x, 10)),
-    ("p90", lambda x: np.percentile(x, 90)),
+    ("std_over_mean", lambda x: (float(np.std(x) / np.mean(x)) if float(np.mean(x)) != 0.0 else 0.0)),
+    # ("std", np.std),
+    # ("median", np.median),
+    # ("p10", lambda x: np.percentile(x, 10)),
+    # ("p90", lambda x: np.percentile(x, 90)),
 ]
+
+SPEED_STAGE_BUCKETS = (2, 3, 4, 5)
+STAGE_ENCODED_SPEED_PREFIXES = {"speed_1s", "speed_10s_avg"}
 
 
 def load_metadata(path: Path):
@@ -101,13 +105,9 @@ def roaming_features(arr: np.ndarray):
 def stage_features(stage_info, worm_id):
     feats = {}
     durations = stage_info.get(worm_id, {})
-    total_frames = sum(durations.values())
-    for idx in range(1, 7):
-        if idx in {1, 5}:
-            continue
+    for idx in range(2, 6):
         duration = int(durations.get(idx, 0))
         feats[f"stage_{idx}_frames"] = duration
-    feats["total_frames"] = int(total_frames)
     return feats
 
 
@@ -119,6 +119,19 @@ def speed_features(worm_id, speed_dir: Path, column_count: int, prefix: str):
     path = speed_dir / f"{worm_id}.npz"
     data = np.load(path)["data"]
     feats[f"{prefix}_rows"] = int(data.shape[0])
+
+    if prefix in STAGE_ENCODED_SPEED_PREFIXES:
+        stage_col = data[:, 2].astype(float)
+        for stage_idx in SPEED_STAGE_BUCKETS:
+            stage_mask = stage_col == float(stage_idx)
+            stage_data = data[stage_mask]
+            feats[f"{prefix}_stage{stage_idx}_rows"] = int(stage_data.shape[0])
+            for col_idx in (0, 1):
+                col = stage_data[:, col_idx].astype(float) if stage_data.size else np.array([])
+                for stat_name, value in summarize_array(col).items():
+                    feats[f"{prefix}_stage{stage_idx}_col{col_idx + 1}_{stat_name}"] = value
+        return feats
+
     for col_idx in range(column_count):
         col = data[:, col_idx].astype(float)
         for stat_name, value in summarize_array(col).items():

@@ -10,16 +10,20 @@ BASE_DIR = Path("data_normalized") / EXPERIMENT_ID
 SPEED_SETS = [
     ("speed_1s", 3),
     ("speed_10s_avg", 3),
-    ("speed_av2", 6),
+    # ("speed_av2", 6),
 ]
 
 STATS = [
     ("mean", np.mean),
-    ("std", np.std),
-    ("median", np.median),
-    ("p10", lambda x: np.percentile(x, 10)),
-    ("p90", lambda x: np.percentile(x, 90)),
+    ("std_over_mean", lambda x: (float(np.std(x) / np.mean(x)) if float(np.mean(x)) != 0.0 else 0.0)),
+    # ("std", np.std),
+    # ("median", np.median),
+    # ("p10", lambda x: np.percentile(x, 10)),
+    # ("p90", lambda x: np.percentile(x, 90)),
 ]
+
+SPEED_STAGE_BUCKETS = (2, 3, 4, 5)
+STAGE_ENCODED_SPEED_SUFFIXES = ("speed_1s", "speed_10s_avg")
 
 
 def load_csv(path: Path):
@@ -64,6 +68,19 @@ def roaming_features(arr: np.ndarray):
 
 def speed_features(arr: np.ndarray, column_count: int, prefix: str):
     feats = {f"{prefix}_rows": int(arr.shape[0])}
+
+    if prefix.endswith(STAGE_ENCODED_SPEED_SUFFIXES):
+        stage_col = arr[:, 2].astype(float) if arr.size else np.array([])
+        for stage_idx in SPEED_STAGE_BUCKETS:
+            stage_mask = stage_col == float(stage_idx) if stage_col.size else np.array([], dtype=bool)
+            stage_data = arr[stage_mask] if stage_col.size else arr[:0]
+            feats[f"{prefix}_stage{stage_idx}_rows"] = int(stage_data.shape[0])
+            for col_idx in (0, 1):
+                col = stage_data[:, col_idx].astype(float) if stage_data.size else np.array([])
+                for stat_name, value in summarize_array(col).items():
+                    feats[f"{prefix}_stage{stage_idx}_col{col_idx + 1}_{stat_name}"] = value
+        return feats
+
     for col_idx in range(column_count):
         col = arr[:, col_idx].astype(float)
         for stat_name, value in summarize_array(col).items():

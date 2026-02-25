@@ -42,12 +42,16 @@ def build_combined(out_path: Path, base_dirs):
     if not rows:
         raise RuntimeError("No rows found for combined dataset.")
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = list(rows[0].keys())
+    fieldnames = []
+    for row in rows:
+        for key in row.keys():
+            if key not in fieldnames:
+                fieldnames.append(key)
     with out_path.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
-            writer.writerow(row)
+            writer.writerow({name: row.get(name, "") for name in fieldnames})
 
 
 def main():

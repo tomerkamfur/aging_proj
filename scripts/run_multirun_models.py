@@ -49,11 +49,14 @@ def load_dataset(path: Path, target: str):
     return X, y, feature_cols
 
 
-def run_once(X, y, feature_cols, args, seed):
+def run_once_split(X, y, feature_cols, args, seed):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=args.test_size, random_state=seed
     )
+    return run_once_fixed_train_test(X_train, y_train, X_test, y_test, feature_cols, args, seed)
 
+
+def run_once_fixed_train_test(X_train, y_train, X_test, y_test, feature_cols, args, seed):
     cv_mae = []
     cv_rmse = []
     cv_r2 = []
@@ -116,12 +119,41 @@ def write_metrics(path: Path, rows):
             writer.writerow(row)
 
 
+def run_dataset(name, X_train, y_train, X_test, y_test, feature_cols, args, out_dir: Path):
+    metrics_rows = []
+    import_rows = []
+    for run_idx in range(args.runs):
+        seed = 42 + run_idx
+        metrics, importances = run_once_fixed_train_test(
+            X_train, y_train, X_test, y_test, feature_cols, args, seed
+        )
+        metrics_row = {
+            "dataset": name,
+            "run": run_idx + 1,
+            "seed": seed,
+            **metrics,
+        }
+        metrics_rows.append(metrics_row)
+
+        importances = importances.copy()
+        importances["dataset"] = name
+        importances["run"] = run_idx + 1
+        importances["seed"] = seed
+        import_rows.append(importances)
+
+    metrics_path = out_dir / f"{name}_metrics.csv"
+    import_path = out_dir / f"{name}_feature_importance.csv"
+    write_metrics(metrics_path, metrics_rows)
+    pd.concat(import_rows, ignore_index=True).to_csv(import_path, index=False)
+    print(f"Wrote {metrics_path} and {import_path}")
+
+
 def main():
     args = parse_args()
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    datasets = {
+    split_datasets = {
         "SI206": "data_normalized/SI206_2025-05-08/features_days_alive.csv",
         "SI216": "data_normalized/SI216_2025-04-12/features_days_alive.csv",
         "Combined": "data_normalized/combined_features_days_alive.csv",
@@ -130,34 +162,34 @@ def main():
         "Combined_shuffled": "data_normalized/combined_features_days_alive_shuffled.csv",
     }
 
-    for name, path_str in datasets.items():
-        path = Path(path_str)
-        X, y, feature_cols = load_dataset(path, target="days_alive")
+    for name, path_str in split_datasets.items():
+        X, y, feature_cols = load_dataset(Path(path_str), target="days_alive")
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=args.test_size, random_state=42
+        )
+        run_dataset(name, X_train, y_train, X_test, y_test, feature_cols, args, out_dir)
 
-        metrics_rows = []
-        import_rows = []
-        for run_idx in range(args.runs):
-            seed = 42 + run_idx
-            metrics, importances = run_once(X, y, feature_cols, args, seed)
-            metrics_row = {
-                "dataset": name,
-                "run": run_idx + 1,
-                "seed": seed,
-                **metrics,
-            }
-            metrics_rows.append(metrics_row)
+    train_shuffled_test_regular = {
+        "SI206_train_shuffled_test_regular": (
+            "data_normalized/SI206_2025-05-08/features_days_alive_shuffled.csv",
+            "data_normalized/SI206_2025-05-08/features_days_alive.csv",
+        ),
+        "SI216_train_shuffled_test_regular": (
+            "data_normalized/SI216_2025-04-12/features_days_alive_shuffled.csv",
+            "data_normalized/SI216_2025-04-12/features_days_alive.csv",
+        ),
+        "Combined_train_shuffled_test_regular": (
+            "data_normalized/combined_features_days_alive_shuffled.csv",
+            "data_normalized/combined_features_days_alive.csv",
+        ),
+    }
 
-            importances = importances.copy()
-            importances["dataset"] = name
-            importances["run"] = run_idx + 1
-            importances["seed"] = seed
-            import_rows.append(importances)
-
-        metrics_path = out_dir / f"{name}_metrics.csv"
-        import_path = out_dir / f"{name}_feature_importance.csv"
-        write_metrics(metrics_path, metrics_rows)
-        pd.concat(import_rows, ignore_index=True).to_csv(import_path, index=False)
-        print(f"Wrote {metrics_path} and {import_path}")
+    for name, (train_path_str, test_path_str) in train_shuffled_test_regular.items():
+        X_train, y_train, feature_cols_train = load_dataset(Path(train_path_str), target="days_alive")
+        X_test, y_test, feature_cols_test = load_dataset(Path(test_path_str), target="days_alive")
+        if feature_cols_train != feature_cols_test:
+            raise ValueError(f"Feature mismatch between train/test for {name}")
+        run_dataset(name, X_train, y_train, X_test, y_test, feature_cols_train, args, out_dir)
 
 
 if __name__ == "__main__":

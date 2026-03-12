@@ -11,6 +11,9 @@ DATASETS = [
     ("SI216", "multirun_results/SI216_metrics.csv"),
     ("SI206", "multirun_results/SI206_metrics.csv"),
     ("Combined", "multirun_results/Combined_metrics.csv"),
+    ("SI216_train_shuffled_test_regular", "multirun_results/SI216_train_shuffled_test_regular_metrics.csv"),
+    ("SI206_train_shuffled_test_regular", "multirun_results/SI206_train_shuffled_test_regular_metrics.csv"),
+    ("Combined_train_shuffled_test_regular", "multirun_results/Combined_train_shuffled_test_regular_metrics.csv"),
     ("SI216_shuffled", "multirun_results/SI216_shuffled_metrics.csv"),
     ("SI206_shuffled", "multirun_results/SI206_shuffled_metrics.csv"),
     ("Combined_shuffled", "multirun_results/Combined_shuffled_metrics.csv"),
@@ -41,7 +44,7 @@ def load_metrics():
 
 def plot_metric(df, metric, out_dir: Path):
     order = [label for label, _ in DATASETS]
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(12, 6))
     sns.swarmplot(
         data=df,
         x="dataset",

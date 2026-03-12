@@ -83,6 +83,46 @@ With only ~40–50 worms per experiment, the model is still in a high-variance s
 
 In other words, more samples only help if they add aligned signal; if they add heterogeneity, the model may not improve (or may degrade) because it is trying to fit conflicting patterns.
 
+Regular vs shuffled-control statistical comparisons
+
+Using the 100 matched regular multirun seeds, one-sided paired Wilcoxon signed-rank tests were computed to test whether the regular-feature models outperform two controls:
+- fully shuffled target training (`*_shuffled_metrics.csv`)
+- train-on-shuffled / test-on-regular (`*_train_shuffled_test_regular_metrics.csv`)
+
+P-value calculation details:
+- Runs were matched by `run` / `seed` between the regular dataset and the control dataset.
+- For each metric, a paired delta was computed for every matched run: `delta = regular - control`.
+- For `R2`, the one-sided alternative tested whether `delta > 0` (regular higher is better).
+- For `MAE` and `RMSE`, the one-sided alternative tested whether `delta < 0` (regular lower is better).
+- Reported effect sizes are the mean and median of those paired deltas.
+
+| Comparison | Metric | p-value | Mean delta (regular - control) | Median delta (regular - control) |
+|---|---|---:|---:|---:|
+| SI206 vs shuffled | R2 | 0.000000000000000002 | 0.8533 | 0.8581 |
+| SI206 vs shuffled | MAE | 0.000000000000000002 | -1.1948 | -1.1846 |
+| SI206 vs shuffled | RMSE | 0.000000000000000002 | -1.4186 | -1.4235 |
+| SI206 vs train_shuffled_test_regular | R2 | 0.000000000000000002 | 0.2317 | 0.2323 |
+| SI206 vs train_shuffled_test_regular | MAE | 0.000000000000000002 | -0.8413 | -0.8449 |
+| SI206 vs train_shuffled_test_regular | RMSE | 0.000000000000000002 | -0.8412 | -0.8408 |
+| SI216 vs shuffled | R2 | 0.000000000000000002 | 1.1359 | 1.1360 |
+| SI216 vs shuffled | MAE | 0.000000000000000002 | -1.4653 | -1.4638 |
+| SI216 vs shuffled | RMSE | 0.000000000000000002 | -1.3630 | -1.3554 |
+| SI216 vs train_shuffled_test_regular | R2 | 0.000000000000000002 | 0.6646 | 0.6631 |
+| SI216 vs train_shuffled_test_regular | MAE | 0.000000000000000002 | -0.7892 | -0.7859 |
+| SI216 vs train_shuffled_test_regular | RMSE | 0.000000000000000002 | -0.9129 | -0.9101 |
+| Combined vs shuffled | R2 | 0.501372 | 0.0002 | -0.0072 |
+| Combined vs shuffled | MAE | 0.000000000000000002 | -0.5079 | -0.5082 |
+| Combined vs shuffled | RMSE | 0.000000000000000002 | -0.6396 | -0.6345 |
+| Combined vs train_shuffled_test_regular | R2 | 0.000000000000000002 | 0.3235 | 0.3256 |
+| Combined vs train_shuffled_test_regular | MAE | 0.000000000000000002 | -0.6689 | -0.6692 |
+| Combined vs train_shuffled_test_regular | RMSE | 0.000000000000000002 | -0.7827 | -0.7848 |
+
+Interpretation:
+- For `SI206` and `SI216`, the regular models are clearly better than both negative controls on all three metrics. The p-values are effectively zero at this scale, and the effect sizes are large.
+- For `Combined` versus `train_shuffled_test_regular`, the regular model is also clearly better on `R2`, `MAE`, and `RMSE`, again with large effect sizes and extremely small p-values.
+- For `Combined` versus fully `shuffled`, `MAE` and `RMSE` still show a strong and significant advantage for the regular model, but `R2` does not (`p = 0.501372`). That means the combined model is reducing absolute error relative to the shuffled control, but this advantage is not showing up as a stable improvement in explained variance across runs.
+- Practically, this supports the claim that the real features contain signal beyond shuffled controls, while also showing that `R2` is the least stable metric here, especially on the combined dataset.
+
 Notes
 - `total_frames` is derived from stage boundaries and can serve as a proxy
   target if no explicit lifespan label exists.
